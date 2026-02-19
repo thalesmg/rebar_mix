@@ -7,12 +7,14 @@
 %% Public API
 %% ===================================================================
 build(AppInfo) ->
+  MixEnv = get_mix_env(AppInfo),
   AppDir = rebar_app_info:dir(AppInfo),
   BuildDir = filename:join(AppDir, "../"),
-  BuildElixirDir = filename:join(AppDir, "_build/prod/lib/"),
+  BuildElixirDir = filename:join(AppDir, build_elixir_dir(MixEnv)),
   AppName = rebar_mix_utils:to_string(rebar_app_info:name(AppInfo)),
 
-  rebar_mix_utils:compile(AppDir),
+  CompileOpts = #{mix_env => MixEnv},
+  rebar_mix_utils:compile(AppDir, CompileOpts),
 
   {ok, Apps} = rebar_utils:list_dir(BuildElixirDir),
   Deps = Apps -- [AppName],
@@ -36,3 +38,24 @@ format_error({mix_compile_failed, Name, _Error}) ->
   io_lib:format("Failed to compile application ~ts with mix", [Name]);
 format_error(Reason) ->
   io_lib:format("~p", Reason).
+
+get_mix_env(AppInfo) ->
+    AppOpts = rebar_app_info:opts(AppInfo),
+    case dict:find(rebar_mix, AppOpts) of
+        {ok, Opts} when is_list(Opts) ->
+            case proplists:get_value(env, Opts, "prod") of
+                Env when is_atom(Env); is_binary(Env); is_list(Env) ->
+                    to_charlist(Env);
+                _ ->
+                    "prod"
+            end;
+        _ ->
+            "prod"
+    end.
+
+build_elixir_dir(MixEnv) ->
+    filename:join(["_build", MixEnv, "lib"]) ++ "/".
+
+to_charlist(A) when is_atom(A) -> atom_to_list(A);
+to_charlist(B) when is_binary(B) -> binary_to_list(B);
+to_charlist(L) when is_list(L) -> L.

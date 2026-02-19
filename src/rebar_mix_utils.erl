@@ -6,7 +6,7 @@
          add_elixir/1,
          create_rebar_lock_from_mix/2,
          save_rebar_lock/2,
-         compile/1,
+         compile/2,
          move_to_path/3,
          elixir_to_lock/1,
          add_elixir_to_build_path/1,
@@ -133,15 +133,16 @@ elixir_to_lock(Lock) ->
 
 %% @doc compiles a elixir app which is located in AppDir.
 %% Crash compilation when something goes wrong.
--spec compile(string()) -> string().
-compile(AppDir) ->
+-spec compile(string(), map()) -> string().
+compile(AppDir, Opts) ->
+  MixEnv = maps:get(mix_env, Opts, "prod"),
   {ok, _ } = rebar_utils:sh("mix deps.get",
                             [
                              {cd, AppDir},
                              {use_stdout, true},
                              abort_on_error,
                              {env, [
-                                    {"MIX_ENV", "prod"}
+                                    {"MIX_ENV", MixEnv}
                                    ]
                              }]),
   {ok, _ } = rebar_utils:sh("mix compile",
@@ -150,10 +151,14 @@ compile(AppDir) ->
                              {use_stdout, true},
                              abort_on_error,
                              {env, [
-                                    {"MIX_ENV", "prod"}
+                                    {"MIX_ENV", MixEnv}
                                    ]
                              }]),
-  filename:join(AppDir, "_build/prod/lib/").
+  BuildElixirDir = build_elixir_dir(MixEnv),
+  filename:join(AppDir, BuildElixirDir).
+
+build_elixir_dir(MixEnv) ->
+    filename:join(["_build", MixEnv, "lib"]) ++ "/".
 
 %% @doc Moves a list of files located in Source to a
 %% new directory located in Traget.
