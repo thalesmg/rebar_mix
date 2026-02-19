@@ -8,12 +8,13 @@
 %% ===================================================================
 build(AppInfo) ->
   MixEnv = get_mix_env(AppInfo),
+  SystemEnv = get_system_env(AppInfo),
   AppDir = rebar_app_info:dir(AppInfo),
   BuildDir = filename:join(AppDir, "../"),
   BuildElixirDir = filename:join(AppDir, build_elixir_dir(MixEnv)),
   AppName = rebar_mix_utils:to_string(rebar_app_info:name(AppInfo)),
 
-  CompileOpts = #{mix_env => MixEnv},
+  CompileOpts = #{mix_env => MixEnv, system_env => SystemEnv},
   rebar_mix_utils:compile(AppDir, CompileOpts),
 
   {ok, Apps} = rebar_utils:list_dir(BuildElixirDir),
@@ -40,17 +41,28 @@ format_error(Reason) ->
   io_lib:format("~p", Reason).
 
 get_mix_env(AppInfo) ->
+    case get_dep_opt(AppInfo, env, "prod") of
+        Env when is_list(Env); is_binary(Env); is_atom(Env) ->
+            to_charlist(Env);
+        _ ->
+            "prod"
+    end.
+
+get_system_env(AppInfo) ->
+    get_dep_opt(AppInfo, system_env, []).
+
+get_dep_opt(AppInfo, Key, Default) ->
     AppOpts = rebar_app_info:opts(AppInfo),
     case dict:find(rebar_mix, AppOpts) of
         {ok, Opts} when is_list(Opts) ->
-            case proplists:get_value(env, Opts, "prod") of
-                Env when is_atom(Env); is_binary(Env); is_list(Env) ->
-                    to_charlist(Env);
+            case lists:keyfind(Key, 1, Opts) of
+                {Key, Value} ->
+                    Value;
                 _ ->
-                    "prod"
+                    Default
             end;
         _ ->
-            "prod"
+            Default
     end.
 
 build_elixir_dir(MixEnv) ->

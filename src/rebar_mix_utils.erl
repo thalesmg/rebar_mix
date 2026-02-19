@@ -136,13 +136,15 @@ elixir_to_lock(Lock) ->
 -spec compile(string(), map()) -> string().
 compile(AppDir, Opts) ->
   MixEnv = maps:get(mix_env, Opts, "prod"),
+  SystemEnv = maps:get(system_env, Opts, []),
   {ok, _ } = rebar_utils:sh("mix deps.get",
                             [
                              {cd, AppDir},
                              {use_stdout, true},
                              abort_on_error,
                              {env, [
-                                    {"MIX_ENV", MixEnv}
+                                     {"MIX_ENV", MixEnv}
+                                   | SystemEnv
                                    ]
                              }]),
   {ok, _ } = rebar_utils:sh("mix compile",
@@ -151,7 +153,8 @@ compile(AppDir, Opts) ->
                              {use_stdout, true},
                              abort_on_error,
                              {env, [
-                                    {"MIX_ENV", MixEnv}
+                                     {"MIX_ENV", MixEnv}
+                                   | SystemEnv
                                    ]
                              }]),
   BuildElixirDir = build_elixir_dir(MixEnv),
